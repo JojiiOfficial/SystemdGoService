@@ -39,22 +39,22 @@ const (
 	Exec ServiceType = "exec"
 )
 
-//Restart when the service should be restarted
-type Restart string
+//ServiceRestart when the service should be restarted
+type ServiceRestart string
 
 const (
 	//No don't restart
-	No Restart = "no"
+	No ServiceRestart = "no"
 	//Always restart always
-	Always Restart = "always"
+	Always ServiceRestart = "always"
 	//OnSuccess restart only on success (exitcode=0 or on SIGHUP, SIGINT, SIGTERM or on SIGPIPE)
-	OnSuccess Restart = "on-success"
+	OnSuccess ServiceRestart = "on-success"
 	//OnFailure restart only on failure (exitcode != 0)
-	OnFailure Restart = "on-failure"
+	OnFailure ServiceRestart = "on-failure"
 	//OnAbnormal restart if the service was terminated by a signal, or an operation timed out
-	OnAbnormal Restart = "on-abnormal"
+	OnAbnormal ServiceRestart = "on-abnormal"
 	//OnAbort restart if the service was terminated by an non clean exit signal
-	OnAbort Restart = "on-abort"
+	OnAbort ServiceRestart = "on-abort"
 	//OnWatchdog restart if the watchdog timed out
 	OnWatchdog = "on-watchdog"
 )
@@ -90,26 +90,26 @@ type Unit struct {
 
 //SService [Service] in .service file
 type SService struct {
-	Type                     ServiceType `name:"Type"`
-	ExecStartPre             string      `name:"ExecStartPre"`
-	ExecStart                string      `name:"ExecStart"`
-	ExecReload               string      `name:"ExecReload"`
-	ExecStop                 string      `name:"ExecStop"`
-	RestartSec               string      `name:"RestartSec"`
-	User                     string      `name:"User"`
-	Group                    string      `name:"Group"`
-	Restart                  Restart     `name:"Restart"`
-	TimeoutStartSec          int         `name:"TimeoutStartSec"`
-	TimeoutStopSec           int         `name:"TimeoutStopSec"`
-	SuccessExitStatus        string      `name:"SuccessExitStatus"`
-	RestartPreventExitStatus string      `name:"RestartPreventExitStatus"`
-	PIDFile                  string      `name:"PIDFile"`
-	WorkingDirectory         string      `name:"WorkingDirectory"`
-	RootDirectory            string      `name:"RootDirectory"`
-	LogsDirectory            string      `name:"LogsDirectory"`
-	KillMode                 string      `name:"KillMode"`
-	ConditionPathExists      string      `name:"ConditionPathExists"`
-	RemainAfterExit          SystemdBool `name:"RemainAfterExit"`
+	Type                     ServiceType    `name:"Type"`
+	ExecStartPre             string         `name:"ExecStartPre"`
+	ExecStart                string         `name:"ExecStart"`
+	ExecReload               string         `name:"ExecReload"`
+	ExecStop                 string         `name:"ExecStop"`
+	RestartSec               string         `name:"RestartSec"`
+	User                     string         `name:"User"`
+	Group                    string         `name:"Group"`
+	Restart                  ServiceRestart `name:"Restart"`
+	TimeoutStartSec          int            `name:"TimeoutStartSec"`
+	TimeoutStopSec           int            `name:"TimeoutStopSec"`
+	SuccessExitStatus        string         `name:"SuccessExitStatus"`
+	RestartPreventExitStatus string         `name:"RestartPreventExitStatus"`
+	PIDFile                  string         `name:"PIDFile"`
+	WorkingDirectory         string         `name:"WorkingDirectory"`
+	RootDirectory            string         `name:"RootDirectory"`
+	LogsDirectory            string         `name:"LogsDirectory"`
+	KillMode                 string         `name:"KillMode"`
+	ConditionPathExists      string         `name:"ConditionPathExists"`
+	RemainAfterExit          SystemdBool    `name:"RemainAfterExit"`
 }
 
 //Install [Install] in .service file
@@ -177,6 +177,8 @@ const (
 	Enable SystemdCommand = 2
 	//Disable disables a service to auto start
 	Disable SystemdCommand = 3
+	//Restart restarts a service
+	Restart SystemdCommand = 4
 )
 
 //SetServiceStatus sets new status for service
@@ -202,6 +204,10 @@ func SetServiceStatus(service string, newStatus SystemdCommand) error {
 	case Disable:
 		{
 			newMode = "disable"
+		}
+	case Restart:
+		{
+			newMode = "restart"
 		}
 	default:
 		{
