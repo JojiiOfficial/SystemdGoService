@@ -20,9 +20,9 @@ func main() {
 	service := SystemdGoService.NewDefaultService("testService", "this is a test", "/bin/sh /test.sh")
 	service.Service.User = "root"
 	service.Service.Group = "root"
-	service.Create()
-	service.Enable() //or service.Disable()
-	service.start() //or stop
+	service.Create() 	// alternatively you can use service.Generate() to get the content as string instead
+	service.Enable() 	// or service.Disable()
+	service.start() 	// or service.Stop()
 }
 ``` 
 This creates following file (/etc/systemd/system/testService.service):
