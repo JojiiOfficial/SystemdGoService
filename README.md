@@ -22,7 +22,7 @@ func main() {
 	service.Service.Group = "root"
 	service.Create() 	// alternatively you can use service.Generate() to get the content as string instead
 	service.Enable() 	// or service.Disable()
-	service.start() 	// or service.Stop()
+	service.Start() 	// or service.Stop()
 }
 ``` 
 This creates following file (/etc/systemd/system/testService.service):
