@@ -1,7 +1,11 @@
 package main
 
 import (
+	"errors"
+	"os"
 	"reflect"
+	"strconv"
+	"strings"
 )
 
 //Target systemd target
@@ -155,8 +159,31 @@ func (service *Service) Enable() {
 
 }
 
-//Save saves a service to a .service file
-func (service *Service) Save() {
+//Create creates a service file
+func (service *Service) Create() error {
+	if os.Getgid() != 0 {
+		return errors.New("you neet to be root")
+	}
+
+	content := service.Generate()
+	name := service.Name
+	if !strings.HasPrefix(name, ".service") {
+		name += ".service"
+	}
+	f, err := os.Create("/etc/systemd/system/" + name)
+	if err != nil {
+		return err
+	}
+	_, err = f.WriteString(content)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+//Generate generates a service to a .service file
+func (service *Service) Generate() string {
 	unit := service.Unit
 	sservice := service.Service
 	install := service.Install
@@ -182,10 +209,12 @@ func (service *Service) Save() {
 			value := v.Field(index)
 			fieldKey := v.Type().Field(index).Tag.Get("name")
 
-			if len(value.String()) > 0 {
+			if v.Field(index).Kind() == reflect.String && len(value.String()) > 0 {
 				final += fieldKey + "=" + value.String() + "\n"
+			} else if v.Field(index).Kind() == reflect.Int && value.Int() != 0 {
+				final += fieldKey + "=" + strconv.FormatInt(value.Int(), 10) + "\n"
 			}
 		}
-
 	}
+	return final
 }
