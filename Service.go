@@ -1,7 +1,6 @@
 package main
 
 import (
-	"fmt"
 	"reflect"
 )
 
@@ -23,8 +22,36 @@ type ServiceType string
 const (
 	//Simple simple service
 	Simple ServiceType = "simple"
-	//Notify notify service
+	//Notify tells the systemd if its initialzed
 	Notify ServiceType = "notify"
+	//Forking keep active if a fork is running but the parent has exited
+	Forking ServiceType = "forking"
+	//Dbus a dbus service
+	Dbus ServiceType = "dbus"
+	//Oneshot wait until the start action has finished until it consideres to be active
+	Oneshot ServiceType = "oneshot"
+	//Exec similar to simple
+	Exec ServiceType = "exec"
+)
+
+//Restart when the service should be restarted
+type Restart string
+
+const (
+	//No don't restart
+	No Restart = "no"
+	//Always restart always
+	Always Restart = "always"
+	//OnSuccess restart only on success (exitcode=0 or on SIGHUP, SIGINT, SIGTERM or on SIGPIPE)
+	OnSuccess Restart = "on-success"
+	//OnFailure restart only on failure (exitcode != 0)
+	OnFailure Restart = "on-failure"
+	//OnAbnormal restart if the service was terminated by a signal, or an operation timed out
+	OnAbnormal Restart = "on-abnormal"
+	//OnAbort restart if the service was terminated by an non clean exit signal
+	OnAbort Restart = "on-abort"
+	//OnWatchdog restart if the watchdog timed out
+	OnWatchdog = "on-watchdog"
 )
 
 //Service service
@@ -38,6 +65,7 @@ type Service struct {
 //Unit [Unit] in .service file
 type Unit struct {
 	Description         string `name:"Description"`
+	Documentation       string `name:"Documentation"`
 	Before              Target `name:"Before"`
 	After               Target `name:"After"`
 	Wants               Target `name:"Wants"`
@@ -46,21 +74,21 @@ type Unit struct {
 
 //SService [Service] in .service file
 type SService struct {
-	Type      ServiceType
-	ExecStart string
-	User      string
-	Group     string
-	Restart   string
+	Type      ServiceType `name:"Type"`
+	ExecStart string      `name:"ExecStart"`
+	User      string      `name:"User"`
+	Group     string      `name:"Group"`
+	Restart   string      `name:"Restart"`
 }
 
 //Install [Install] in .service file
 type Install struct {
-	WantedBy Target
-	Alias    string
+	WantedBy Target `name:"WantedBy"`
+	Alias    string `name:"Alias"`
 }
 
-//NewSimpleService creates a new default service
-func NewSimpleService(name, description, execStart string) *Service {
+//NewDefaultService creates a new default service
+func NewDefaultService(name, description, execStart string) *Service {
 	return &Service{
 		Name: name,
 		Unit: Unit{
@@ -74,6 +102,15 @@ func NewSimpleService(name, description, execStart string) *Service {
 		Install: Install{
 			WantedBy: MultiuserTarget,
 		},
+	}
+}
+
+//NewService creates a new service
+func NewService(unit Unit, service SService, install Install) *Service {
+	return &Service{
+		Unit:    unit,
+		Service: service,
+		Install: install,
 	}
 }
 
@@ -92,16 +129,37 @@ func (service *Service) Enable() {
 
 }
 
-func (service *Service) save() {
+//Save saves a service to a .service file
+func (service *Service) Save() {
 	unit := service.Unit
-	//sservice := service.Service
-	//install := service.Install
+	sservice := service.Service
+	install := service.Install
+	final := ""
+	var part interface{}
+	for i := 0; i < 3; i++ {
+		if i == 0 {
+			part = &unit
+		} else if i == 1 {
+			part = &sservice
+		} else if i == 2 {
+			part = &install
+		}
+		if i == 0 {
+			final += "[Unit]\n"
+		} else if i == 1 {
+			final += "\n[Service]\n"
+		} else if i == 2 {
+			final += "\n[Install]\n"
+		}
+		v := reflect.ValueOf(part).Elem()
+		for index := 0; index < v.NumField(); index++ {
+			value := v.Field(index)
+			fieldKey := v.Type().Field(index).Tag.Get("name")
 
-	//final := "[Unit]\n"
-	v := reflect.TypeOf(unit)
-	for index := 0; index < v.NumField(); index++ {
-		fmt.Println(v.Field(index).Tag.Get("name"))
-		fmt.Println(reflect.ValueOf(v).Field(index).String())
+			if len(value.String()) > 0 {
+				final += fieldKey + "=" + value.String() + "\n"
+			}
+		}
+
 	}
-
 }
