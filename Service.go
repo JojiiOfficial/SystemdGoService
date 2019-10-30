@@ -179,10 +179,10 @@ const (
 	Disable SystemdCommand = 3
 )
 
-//set the status of a service (0 = disabled;1=enabled)
-func (service *Service) setStatus(newStatus SystemdCommand) error {
-	name := nameToServiceFile(service.Name)
-	if !systemfileExists(name) {
+//SetServiceStatus sets new status for service
+func SetServiceStatus(service string, newStatus SystemdCommand) error {
+	name := NameToServiceFile(service)
+	if !SystemfileExists(name) {
 		return errors.New("service not found")
 	}
 	newMode := ""
@@ -212,7 +212,13 @@ func (service *Service) setStatus(newStatus SystemdCommand) error {
 	return err
 }
 
-func systemfileExists(name string) bool {
+//set the status of a service (0 = disabled;1=enabled)
+func (service *Service) setStatus(newStatus SystemdCommand) error {
+	return SetServiceStatus(service.Name, newStatus)
+}
+
+//SystemfileExists returns true if service exists
+func SystemfileExists(name string) bool {
 	_, err := os.Stat("/etc/systemd/system/" + name)
 	if err != nil {
 		return false
@@ -227,7 +233,7 @@ func (service *Service) Create() error {
 	}
 
 	content := service.Generate()
-	name := nameToServiceFile(service.Name)
+	name := NameToServiceFile(service.Name)
 	f, err := os.Create("/etc/systemd/system/" + name)
 	if err != nil {
 		return err
@@ -240,7 +246,8 @@ func (service *Service) Create() error {
 	return nil
 }
 
-func nameToServiceFile(name string) string {
+//NameToServiceFile returns the name of the servicefile
+func NameToServiceFile(name string) string {
 	if !strings.HasPrefix(name, ".service") {
 		return name + ".service"
 	}
