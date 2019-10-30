@@ -146,42 +146,67 @@ func NewService(unit Unit, service SService, install Install) *Service {
 }
 
 //Stop stop
-func (service *Service) Stop() {
-
+func (service *Service) Stop() error {
+	return service.setStatus(Stop)
 }
 
 //Start starts a service
 func (service *Service) Start() error {
-	name := nameToServiceFile(service.Name)
-	if !systemfileExists(name) {
-		return errors.New("service not found")
-	}
-	_, err := runCommand(nil, "systemctl start "+name)
-	if err != nil {
-		return err
-	}
-	return nil
+	return service.setStatus(Start)
 }
 
 //Disable disables a service
 func (service *Service) Disable() error {
-	return service.setStatus(0)
+	return service.setStatus(Disable)
 }
 
 //Enable enables a service
 func (service *Service) Enable() error {
-	return service.setStatus(1)
+	return service.setStatus(Enable)
 }
 
+//SystemdCommand a command for systemd
+type SystemdCommand int
+
+const (
+	//Stop stops a running service
+	Stop SystemdCommand = 0
+	//Start starts a stopped service
+	Start SystemdCommand = 1
+	//Enable enables a service to auto start
+	Enable SystemdCommand = 2
+	//Disable disables a service to auto start
+	Disable SystemdCommand = 3
+)
+
 //set the status of a service (0 = disabled;1=enabled)
-func (service *Service) setStatus(newStatus int) error {
+func (service *Service) setStatus(newStatus SystemdCommand) error {
 	name := nameToServiceFile(service.Name)
 	if !systemfileExists(name) {
 		return errors.New("service not found")
 	}
-	newMode := "enable"
-	if newStatus == 0 {
-		newMode = "disable"
+	newMode := ""
+	switch newStatus {
+	case Stop:
+		{
+			newMode = "stop"
+		}
+	case Start:
+		{
+			newMode = "start"
+		}
+	case Enable:
+		{
+			newMode = "enable"
+		}
+	case Disable:
+		{
+			newMode = "disable"
+		}
+	default:
+		{
+			return errors.New("no matching command available")
+		}
 	}
 	_, err := runCommand(nil, "systemctl "+newMode+" "+name)
 	return err
