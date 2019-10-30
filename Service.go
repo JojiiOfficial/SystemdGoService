@@ -151,8 +151,16 @@ func (service *Service) Stop() {
 }
 
 //Start starts a service
-func (service *Service) Start() {
-
+func (service *Service) Start() error {
+	name := nameToServiceFile(service.Name)
+	if !systemfileExists(name) {
+		return errors.New("service not found")
+	}
+	_, err := runCommand(nil, "systemctl start "+name)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
 //Disable disables a service
@@ -168,16 +176,23 @@ func (service *Service) Enable() error {
 //set the status of a service (0 = disabled;1=enabled)
 func (service *Service) setStatus(newStatus int) error {
 	name := nameToServiceFile(service.Name)
-	_, err := os.Stat("/etc/systemd/system/" + name)
-	if err != nil {
-		return err
+	if !systemfileExists(name) {
+		return errors.New("service not found")
 	}
 	newMode := "enable"
 	if newStatus == 0 {
 		newMode = "disable"
 	}
-	_, err = runCommand(nil, "systemctl "+newMode+" "+name)
+	_, err := runCommand(nil, "systemctl "+newMode+" "+name)
 	return err
+}
+
+func systemfileExists(name string) bool {
+	_, err := os.Stat("/etc/systemd/system/" + name)
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 //Create creates a service file
