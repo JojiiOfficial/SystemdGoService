@@ -1,7 +1,12 @@
 package main
 
 import (
+	"errors"
+	"os"
+	"os/exec"
 	"reflect"
+	"strconv"
+	"strings"
 )
 
 //Target systemd target
@@ -146,17 +151,91 @@ func (service *Service) Stop() {
 }
 
 //Start starts a service
-func (service *Service) Start() {
-
+func (service *Service) Start() error {
+	name := nameToServiceFile(service.Name)
+	if !systemfileExists(name) {
+		return errors.New("service not found")
+	}
+	_, err := runCommand(nil, "systemctl start "+name)
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-//Enable a service
-func (service *Service) Enable() {
-
+//Disable disables a service
+func (service *Service) Disable() error {
+	return service.setStatus(0)
 }
 
-//Save saves a service to a .service file
-func (service *Service) Save() {
+//Enable enables a service
+func (service *Service) Enable() error {
+	return service.setStatus(1)
+}
+
+//set the status of a service (0 = disabled;1=enabled)
+func (service *Service) setStatus(newStatus int) error {
+	name := nameToServiceFile(service.Name)
+	if !systemfileExists(name) {
+		return errors.New("service not found")
+	}
+	newMode := "enable"
+	if newStatus == 0 {
+		newMode = "disable"
+	}
+	_, err := runCommand(nil, "systemctl "+newMode+" "+name)
+	return err
+}
+
+func systemfileExists(name string) bool {
+	_, err := os.Stat("/etc/systemd/system/" + name)
+	if err != nil {
+		return false
+	}
+	return true
+}
+
+//Create creates a service file
+func (service *Service) Create() error {
+	if os.Getgid() != 0 {
+		return errors.New("you neet to be root")
+	}
+
+	content := service.Generate()
+	name := nameToServiceFile(service.Name)
+	f, err := os.Create("/etc/systemd/system/" + name)
+	if err != nil {
+		return err
+	}
+	_, err = f.WriteString(content)
+	if err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func nameToServiceFile(name string) string {
+	if !strings.HasPrefix(name, ".service") {
+		return name + ".service"
+	}
+	return name
+}
+
+func runCommand(errorHandler func(error, string), sCmd string) (outb string, err error) {
+	out, err := exec.Command("su", "-c", sCmd).Output()
+	output := string(out)
+	if err != nil {
+		if errorHandler != nil {
+			errorHandler(err, sCmd)
+		}
+		return "", err
+	}
+	return output, nil
+}
+
+//Generate generates a service to a .service file
+func (service *Service) Generate() string {
 	unit := service.Unit
 	sservice := service.Service
 	install := service.Install
@@ -182,10 +261,12 @@ func (service *Service) Save() {
 			value := v.Field(index)
 			fieldKey := v.Type().Field(index).Tag.Get("name")
 
-			if len(value.String()) > 0 {
+			if v.Field(index).Kind() == reflect.String && len(value.String()) > 0 {
 				final += fieldKey + "=" + value.String() + "\n"
+			} else if v.Field(index).Kind() == reflect.Int && value.Int() != 0 {
+				final += fieldKey + "=" + strconv.FormatInt(value.Int(), 10) + "\n"
 			}
 		}
-
 	}
+	return final
 }
