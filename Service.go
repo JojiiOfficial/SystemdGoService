@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"reflect"
+)
+
 //Target systemd target
 type Target string
 
@@ -88,5 +93,15 @@ func (service *Service) Enable() {
 }
 
 func (service *Service) save() {
+	unit := service.Unit
+	//sservice := service.Service
+	//install := service.Install
+
+	//final := "[Unit]\n"
+	v := reflect.TypeOf(unit)
+	for index := 0; index < v.NumField(); index++ {
+		fmt.Println(v.Field(index).Tag.Get("name"))
+		fmt.Println(reflect.ValueOf(v).Field(index).String())
+	}
 
 }
