@@ -1,4 +1,4 @@
-package main
+package SystemdGoService
 
 import (
 	"errors"
