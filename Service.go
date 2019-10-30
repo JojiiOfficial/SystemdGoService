@@ -54,6 +54,16 @@ const (
 	OnWatchdog = "on-watchdog"
 )
 
+//SystemdBool a bool (true=yes/false=no)
+type SystemdBool string
+
+const (
+	//True true
+	True SystemdBool = "yes"
+	//False false
+	False SystemdBool = "no"
+)
+
 //Service service
 type Service struct {
 	Name    string
@@ -70,15 +80,31 @@ type Unit struct {
 	After               Target `name:"After"`
 	Wants               Target `name:"Wants"`
 	ConditionPathExisis string `name:"ConditionPathExists"`
+	Conflicts           string `name:"Conflicts"`
 }
 
 //SService [Service] in .service file
 type SService struct {
-	Type      ServiceType `name:"Type"`
-	ExecStart string      `name:"ExecStart"`
-	User      string      `name:"User"`
-	Group     string      `name:"Group"`
-	Restart   string      `name:"Restart"`
+	Type                     ServiceType `name:"Type"`
+	ExecStartPre             string      `name:"ExecStartPre"`
+	ExecStart                string      `name:"ExecStart"`
+	ExecReload               string      `name:"ExecReload"`
+	ExecStop                 string      `name:"ExecStop"`
+	RestartSec               string      `name:"RestartSec"`
+	User                     string      `name:"User"`
+	Group                    string      `name:"Group"`
+	Restart                  Restart     `name:"Restart"`
+	TimeoutStartSec          int         `name:"TimeoutStartSec"`
+	TimeoutStopSec           int         `name:"TimeoutStopSec"`
+	SuccessExitStatus        string      `name:"SuccessExitStatus"`
+	RestartPreventExitStatus string      `name:"RestartPreventExitStatus"`
+	PIDFile                  string      `name:"PIDFile"`
+	WorkingDirectory         string      `name:"WorkingDirectory"`
+	RootDirectory            string      `name:"RootDirectory"`
+	LogsDirectory            string      `name:"LogsDirectory"`
+	KillMode                 string      `name:"KillMode"`
+	ConditionPathExists      string      `name:"ConditionPathExists"`
+	RemainAfterExit          SystemdBool `name:"RemainAfterExit"`
 }
 
 //Install [Install] in .service file
