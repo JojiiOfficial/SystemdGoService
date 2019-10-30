@@ -3,6 +3,7 @@ package main
 import (
 	"errors"
 	"os"
+	"os/exec"
 	"reflect"
 	"strconv"
 	"strings"
@@ -154,9 +155,29 @@ func (service *Service) Start() {
 
 }
 
-//Enable a service
-func (service *Service) Enable() {
+//Disable disables a service
+func (service *Service) Disable() error {
+	return service.setStatus(0)
+}
 
+//Enable enables a service
+func (service *Service) Enable() error {
+	return service.setStatus(1)
+}
+
+//set the status of a service (0 = disabled;1=enabled)
+func (service *Service) setStatus(newStatus int) error {
+	name := nameToServiceFile(service.Name)
+	_, err := os.Stat("/etc/systemd/system/" + name)
+	if err != nil {
+		return err
+	}
+	newMode := "enable"
+	if newStatus == 0 {
+		newMode = "disable"
+	}
+	_, err = runCommand(nil, "systemctl "+newMode+" "+name)
+	return err
 }
 
 //Create creates a service file
@@ -166,10 +187,7 @@ func (service *Service) Create() error {
 	}
 
 	content := service.Generate()
-	name := service.Name
-	if !strings.HasPrefix(name, ".service") {
-		name += ".service"
-	}
+	name := nameToServiceFile(service.Name)
 	f, err := os.Create("/etc/systemd/system/" + name)
 	if err != nil {
 		return err
@@ -180,6 +198,25 @@ func (service *Service) Create() error {
 	}
 
 	return nil
+}
+
+func nameToServiceFile(name string) string {
+	if !strings.HasPrefix(name, ".service") {
+		return name + ".service"
+	}
+	return name
+}
+
+func runCommand(errorHandler func(error, string), sCmd string) (outb string, err error) {
+	out, err := exec.Command("su", "-c", sCmd).Output()
+	output := string(out)
+	if err != nil {
+		if errorHandler != nil {
+			errorHandler(err, sCmd)
+		}
+		return "", err
+	}
+	return output, nil
 }
 
 //Generate generates a service to a .service file
