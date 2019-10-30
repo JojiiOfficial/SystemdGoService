@@ -21,6 +21,8 @@ func main() {
 	service.Service.User = "root"
 	service.Service.Group = "root"
 	service.Create()
+	service.Enable() //or service.Disable()
+	service.start() //or stop
 }
 ``` 
 This creates following file (/etc/systemd/system/testService.service):
