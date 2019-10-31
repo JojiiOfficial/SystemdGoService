@@ -23,6 +23,10 @@ func main() {
 	service.Create() 	// alternatively you can use service.Generate() to get the content as string instead
 	service.Enable() 	// or service.Disable()
 	service.Start() 	// or service.Stop()
+	
+	//You also can parse an existing service file
+	service := SystemdGoService.Parse("sshd.service")
+	service.Start()		// and start it
 }
 ``` 
 This creates following file (/etc/systemd/system/testService.service):
