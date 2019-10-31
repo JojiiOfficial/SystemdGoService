@@ -1,7 +1,9 @@
-package SystemdGoService
+package main
 
 import (
+	"bufio"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
 	"reflect"
@@ -71,51 +73,54 @@ const (
 
 //Service service
 type Service struct {
-	Name    string
-	Unit    Unit
-	Service SService
-	Install Install
+	Name    string   `name:"name"`
+	Unit    Unit     `name:"[Unit]"`
+	Service SService `name:"[Service]"`
+	Install Install  `name:"[Install]"`
 }
 
 //Unit [Unit] in .service file
 type Unit struct {
-	Description         string `name:"Description"`
-	Documentation       string `name:"Documentation"`
-	Before              Target `name:"Before"`
-	After               Target `name:"After"`
-	Wants               Target `name:"Wants"`
-	ConditionPathExisis string `name:"ConditionPathExists"`
-	Conflicts           string `name:"Conflicts"`
+	Description         string
+	Documentation       string
+	Before              Target
+	After               Target
+	Wants               Target
+	ConditionPathExists string
+	Conflicts           string
 }
 
 //SService [Service] in .service file
 type SService struct {
-	Type                     ServiceType    `name:"Type"`
-	ExecStartPre             string         `name:"ExecStartPre"`
-	ExecStart                string         `name:"ExecStart"`
-	ExecReload               string         `name:"ExecReload"`
-	ExecStop                 string         `name:"ExecStop"`
-	RestartSec               string         `name:"RestartSec"`
-	User                     string         `name:"User"`
-	Group                    string         `name:"Group"`
-	Restart                  ServiceRestart `name:"Restart"`
-	TimeoutStartSec          int            `name:"TimeoutStartSec"`
-	TimeoutStopSec           int            `name:"TimeoutStopSec"`
-	SuccessExitStatus        string         `name:"SuccessExitStatus"`
-	RestartPreventExitStatus string         `name:"RestartPreventExitStatus"`
-	PIDFile                  string         `name:"PIDFile"`
-	WorkingDirectory         string         `name:"WorkingDirectory"`
-	RootDirectory            string         `name:"RootDirectory"`
-	LogsDirectory            string         `name:"LogsDirectory"`
-	KillMode                 string         `name:"KillMode"`
-	ConditionPathExists      string         `name:"ConditionPathExists"`
-	RemainAfterExit          SystemdBool    `name:"RemainAfterExit"`
+	Type                     ServiceType
+	ExecStartPre             string
+	ExecStart                string
+	ExecReload               string
+	ExecStop                 string
+	RestartSec               string
+	User                     string
+	Group                    string
+	Restart                  ServiceRestart
+	TimeoutStartSec          int
+	TimeoutStopSec           int
+	SuccessExitStatus        string
+	RestartPreventExitStatus string
+	PIDFile                  string
+	WorkingDirectory         string
+	RootDirectory            string
+	EnvironmentFile          string
+	RuntimeDirectory         string
+	RuntimeDirectoryMode     string
+	LogsDirectory            string
+	KillMode                 string
+	ConditionPathExists      string
+	RemainAfterExit          SystemdBool
 }
 
 //Install [Install] in .service file
 type Install struct {
-	WantedBy Target `name:"WantedBy"`
-	Alias    string `name:"Alias"`
+	WantedBy Target
+	Alias    string
 }
 
 //NewDefaultService creates a new default service
@@ -225,7 +230,8 @@ func (service *Service) setStatus(newStatus SystemdCommand) error {
 
 //SystemfileExists returns true if service exists
 func SystemfileExists(name string) bool {
-	_, err := os.Stat("/etc/systemd/system/" + name)
+	file := "/etc/systemd/system/" + name
+	_, err := os.Stat(file)
 	if err != nil {
 		return false
 	}
@@ -254,7 +260,7 @@ func (service *Service) Create() error {
 
 //NameToServiceFile returns the name of the servicefile
 func NameToServiceFile(name string) string {
-	if !strings.HasPrefix(name, ".service") {
+	if !strings.HasSuffix(name, ".service") {
 		return name + ".service"
 	}
 	return name
@@ -297,8 +303,7 @@ func (service *Service) Generate() string {
 		v := reflect.ValueOf(part).Elem()
 		for index := 0; index < v.NumField(); index++ {
 			value := v.Field(index)
-			fieldKey := v.Type().Field(index).Tag.Get("name")
-
+			fieldKey := v.Type().Field(index).Name
 			if v.Field(index).Kind() == reflect.String && len(value.String()) > 0 {
 				final += fieldKey + "=" + value.String() + "\n"
 			} else if v.Field(index).Kind() == reflect.Int && value.Int() != 0 {
@@ -307,4 +312,96 @@ func (service *Service) Generate() string {
 		}
 	}
 	return final
+}
+
+//Parse a service file to a Service scruct
+func Parse(fileName string) *Service {
+	if !SystemfileExists(NameToServiceFile(fileName)) {
+		return nil
+	}
+	file, err := os.Open("/etc/systemd/system/" + fileName)
+	if err != nil {
+		return nil
+	}
+	scanner := bufio.NewScanner(file)
+	scanner.Split(bufio.ScanLines)
+	var unitPart, servicePart, installPart string
+	var currentPart *string
+	for scanner.Scan() {
+		line := strings.Trim(scanner.Text(), "")
+		if len(strings.Trim(line, " ")) == 0 {
+			continue
+		}
+		if strings.HasPrefix(line, "[") {
+			if line == "[Unit]" {
+				currentPart = &unitPart
+			} else if line == "[Service]" {
+				currentPart = &servicePart
+			} else if line == "[Install]" {
+				currentPart = &installPart
+			}
+		} else {
+			if currentPart != nil {
+				*currentPart += line + "\n"
+			}
+		}
+	}
+	unitLines := strings.Split(unitPart, "\n")
+	unit := Unit{}
+	vu := reflect.ValueOf(&unit).Elem()
+	for _, line := range unitLines {
+		data := strings.Split(line, "=")
+		if len(data) != 2 {
+			continue
+		}
+		key := data[0]
+		val := data[1]
+		fi := vu.FieldByName(key)
+		if fi != (reflect.Value{}) {
+			fi.SetString(val)
+		} else {
+			fmt.Println(key)
+		}
+	}
+
+	serviceLines := strings.Split(servicePart, "\n")
+	sservice := SService{}
+	vs := reflect.ValueOf(&sservice).Elem()
+	for _, line := range serviceLines {
+		data := strings.Split(line, "=")
+		if len(data) != 2 {
+			continue
+		}
+		key := data[0]
+		val := data[1]
+		fi := vs.FieldByName(key)
+		if fi != (reflect.Value{}) {
+			fi.SetString(val)
+		} else {
+			fmt.Println(key)
+		}
+	}
+	installLines := strings.Split(installPart, "\n")
+	install := Install{}
+	vi := reflect.ValueOf(&install).Elem()
+	for _, line := range installLines {
+		data := strings.Split(line, "=")
+		if len(data) != 2 {
+			continue
+		}
+		key := data[0]
+		val := data[1]
+		fi := vi.FieldByName(key)
+		if fi != (reflect.Value{}) {
+			fi.SetString(val)
+		} else {
+			fmt.Println(key)
+		}
+	}
+	return &Service{
+		Name:    fileName,
+		Unit:    unit,
+		Service: sservice,
+		Install: install,
+	}
 }
