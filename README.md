@@ -81,6 +81,9 @@ For [Service]
 - KillMode
 - ConditionPathExists
 - RemainAfterExit
+- EnvironmentFile
+- RuntimeDirectory
+- RuntimeDirectoryMode
 <br>
 
 For [Install]
