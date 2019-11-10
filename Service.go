@@ -230,6 +230,7 @@ func (service *Service) setStatus(newStatus SystemdCommand) error {
 
 //SystemfileExists returns true if service exists
 func SystemfileExists(name string) bool {
+	name = NameToServiceFile(name)
 	file := "/etc/systemd/system/" + name
 	_, err := os.Stat(file)
 	if err != nil {
