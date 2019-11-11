@@ -267,6 +267,12 @@ func NameToServiceFile(name string) string {
 	return name
 }
 
+//DaemonReload reloads the daemon
+func DaemonReload() error {
+	_, err := runCommand(nil, "systemctl daemon-reload")
+	return err
+}
+
 func runCommand(errorHandler func(error, string), sCmd string) (outb string, err error) {
 	out, err := exec.Command("su", "-c", sCmd).Output()
 	output := string(out)
