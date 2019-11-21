@@ -242,7 +242,7 @@ func SystemfileExists(name string) bool {
 //Create creates a service file
 func (service *Service) Create() error {
 	if os.Getgid() != 0 {
-		return errors.New("you neet to be root")
+		return errors.New("you need to be root")
 	}
 
 	content := service.Generate()
