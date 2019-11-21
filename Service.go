@@ -121,6 +121,7 @@ type SService struct {
 type Install struct {
 	WantedBy Target
 	Alias    string
+	Also     string
 }
 
 //NewDefaultService creates a new default service
